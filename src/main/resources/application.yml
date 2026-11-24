@@ -1,0 +1,88 @@
+# ============================================================
+# RAG 知识库服务配置
+# 敏感信息统一使用环境变量占位，禁止在文件中硬编码
+# ============================================================
+server:
+  # 服务端口
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: rag-knowledge-demo
+
+  # ---------------- PostgreSQL + pgvector 数据源 ----------------
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:rag_demo}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+
+  # ---------------- 通义千问 OpenAI 兼容配置 ----------------
+  ai:
+    openai:
+      # 通义千问 OpenAI 兼容模式地址
+      base-url: ${AI_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode}
+      # API Key 通过环境变量注入
+      api-key: ${DASHSCOPE_API_KEY:}
+      chat:
+        options:
+          # 对话模型
+          model: ${CHAT_MODEL:qwen-turbo}
+          temperature: 0.7
+      embedding:
+        options:
+          # 向量化模型（维度 1536）
+          model: ${EMBEDDING_MODEL:text-embedding-v1}
+
+# ---------------- MyBatis-Plus ----------------
+mybatis-plus:
+  # Mapper XML 位置
+  mapper-locations: classpath*:/mapper/**/*.xml
+  # 实体包别名
+  type-aliases-package: com.demo.rag.entity
+  configuration:
+    # 下划线转驼峰
+    map-underscore-to-camel-case: true
+    # 打印 SQL，便于调试
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    banner: false
+    db-config:
+      # 主键自增
+      id-type: auto
+
+# ---------------- Actuator 健康检查（暴露全部端点） ----------------
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+
+# ---------------- Swagger / OpenAPI ----------------
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+  default-flat-param-object: true
+
+# ---------------- RAG 业务可配置参数 ----------------
+rag:
+  # 文本分块长度
+  chunk-size: ${RAG_CHUNK_SIZE:500}
+  # 分块重叠长度
+  overlap: ${RAG_OVERLAP:100}
+  # 向量检索返回条数
+  top-k: ${RAG_TOP_K:5}
+  # RAG 开关：false 时直接裸问大模型，不检索知识库
+  enable-rag: ${RAG_ENABLE:true}
