@@ -6,11 +6,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.retry.NonTransientAiException;
 import org.springframework.ai.retry.TransientAiException;
 import org.springframework.dao.DataAccessException;
+import org.springframework.transaction.TransactionException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 /**
@@ -72,12 +74,30 @@ public class GlobalExceptionConfig {
     }
 
     /**
+     * 事务异常：无法获取数据库连接等
+     */
+    @ExceptionHandler(TransactionException.class)
+    public Result<Void> handleTransactionException(TransactionException e) {
+        log.error("数据库事务异常: {}", e.getMessage());
+        return Result.fail(500, "数据库操作异常");
+    }
+
+    /**
      * 大模型调用异常
      */
     @ExceptionHandler({NonTransientAiException.class, TransientAiException.class})
     public Result<Void> handleAiException(Exception e) {
         log.error("大模型调用异常", e);
         return Result.fail(502, "大模型调用异常：" + e.getMessage());
+    }
+
+    /**
+     * 大模型 HTTP 调用异常：鉴权失败、限流、服务不可达、响应解析失败等
+     */
+    @ExceptionHandler(RestClientException.class)
+    public Result<Void> handleAiHttpException(RestClientException e) {
+        log.error("大模型 HTTP 调用异常: {}", e.getMessage());
+        return Result.fail(502, "大模型调用失败：" + e.getMessage());
     }
 
     /**

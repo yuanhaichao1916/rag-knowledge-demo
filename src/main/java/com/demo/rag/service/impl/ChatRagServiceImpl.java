@@ -117,20 +117,29 @@ public class ChatRagServiceImpl implements ChatRagService {
         }
 
         Prompt prompt;
-        if (enableRag) {
-            List<SourceVO> sources = retrieve(question, topK);
-            // 先推送来源片段
-            safeSend(emitter, SseEmitter.event().name("sources").data(sources, MediaType.APPLICATION_JSON));
-            if (sources.isEmpty()) {
-                // 无检索结果，直接返回固定提示并结束
-                safeSend(emitter, SseEmitter.event().name("message").data(NO_KNOWLEDGE_ANSWER));
-                safeSend(emitter, SseEmitter.event().name("done").data("[DONE]"));
-                emitter.complete();
-                return emitter;
+        try {
+            if (enableRag) {
+                List<SourceVO> sources = retrieve(question, topK);
+                // 先推送来源片段
+                safeSend(emitter, SseEmitter.event().name("sources").data(sources, MediaType.APPLICATION_JSON));
+                if (sources.isEmpty()) {
+                    // 无检索结果，直接返回固定提示并结束
+                    safeSend(emitter, SseEmitter.event().name("message").data(NO_KNOWLEDGE_ANSWER));
+                    safeSend(emitter, SseEmitter.event().name("done").data("[DONE]"));
+                    emitter.complete();
+                    return emitter;
+                }
+                prompt = buildRagPrompt(question, sources);
+            } else {
+                prompt = new Prompt(question);
             }
-            prompt = buildRagPrompt(question, sources);
-        } else {
-            prompt = new Prompt(question);
+        } catch (Exception e) {
+            // 检索阶段异常：以 SSE error 事件返回，保持 text/event-stream 语义
+            log.error("SSE 检索阶段异常", e);
+            String msg = e.getMessage() == null ? "检索异常" : e.getMessage();
+            safeSend(emitter, SseEmitter.event().name("error").data(msg));
+            emitter.complete();
+            return emitter;
         }
 
         // 订阅流式响应，按 SSE 协议推送增量内容

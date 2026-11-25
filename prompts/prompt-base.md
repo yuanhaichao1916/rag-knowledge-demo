@@ -60,6 +60,13 @@ rag-knowledge-demo
 5. Agent 使用 Spring AI @Tool 注解实现工具调用，LLM自主判断是否调用工具
 6. 提供文档删除、根据doc_id查询分片、健康检查接口
 
+## 前端约定
+1. 技术栈：Vue 3.4 + Vite 5 + Element Plus 2.7
+2. 目录：仓库根目录 `frontend/`，与后端 `src/` 平级
+3. 运行方式：开发模式 Vite 独立 dev server（5173 端口），通过 proxy 转发 `/api` 和 `/v3` 到后端 8080
+4. 构建产物：`frontend/dist/`，可选部署到 Nginx 或 Spring Boot `static/`
+5. 页面范围：问答主界面、文档管理、Agent 工具调试台、接口文档（Swagger UI 内嵌）
+
 ## 工程规范
 1. 统一全局异常处理器，统一接口返回体结构
 2. LLM的System Prompt放到独立txt文件，禁止硬编码在Java代码

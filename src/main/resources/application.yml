@@ -86,3 +86,13 @@ rag:
   top-k: ${RAG_TOP_K:5}
   # RAG 开关：false 时直接裸问大模型，不检索知识库
   enable-rag: ${RAG_ENABLE:true}
+
+# ---------------- 前端跨域（开发环境） ----------------
+# 生产环境建议用 Nginx 同域反向代理替代 CORS，此处仅用于本地联调
+cors:
+  allowed-origins:
+    - http://localhost:5173
+    - http://127.0.0.1:5173
+  allowed-methods: GET,POST,PUT,DELETE,OPTIONS
+  allowed-headers: "*"
+  allow-credentials: true

@@ -79,3 +79,36 @@
   2. 本机 JDK 25 编译需 Lombok 1.18.40+
 验证：mvn compile / package 成功；jar 启动成功（端口 18080）；/v3/api-docs 返回 200 且含 6 个接口；数据库未启动时接口返回 {"code":500,"msg":"数据库操作异常","data":null}
 关联：prompts/task/01-task-pom.md
+
+【12】｜2026-11-25｜无数据库/无密钥环境自检与异常映射修复
+改动：
+  1. GlobalExceptionConfig 新增 RestClientException 处理器（大模型 HTTP 401/限流/响应解析失败 -> 502）；新增 TransactionException 处理器（无法获取数据库连接 -> 500 数据库操作异常）
+  2. ChatRagServiceImpl.chatStream 检索阶段异常改为推送 SSE error 事件，避免退回 JSON 响应破坏 text/event-stream
+决策：SSE 异常必须在事件流内返回，控制器层抛出的异常会让客户端拿到 JSON 而非事件流
+坑点：
+  1. spring.ai.openai.api-key 为空字符串时，Spring AI M6 启动即失败（Assert.hasText），本地无密钥需给占位值才能启动
+  2. 本机无 Docker/PostgreSQL/pgvector，且无 DASHSCOPE_API_KEY，完整 RAG 链路（上传->向量化->检索）未能联调
+验证：
+  mvn package 成功；jar 启动成功（18080，占位 key）
+  /actuator/health=503（数据库缺失，符合预期）；/v3/api-docs=200
+  /api/doc/{id}/chunks -> {"code":500,"msg":"数据库操作异常"}"
+  /api/chat、/api/agent/chat -> {"code":502,"msg":"大模型调用失败：..."}
+  /api/chat/stream -> HTTP 200 + text/event-stream + event:error
+关联：prompts/task/09-task-global-exception.md、10-task-docker-readme.md
+
+【13】｜2026-11-25｜新增 Vue3 + Vite + Element Plus 前端
+改动：
+  1. 更新 prompts/prompt-base.md，新增「前端约定」节（Vue3.4 + Vite5 + EP2.7、frontend/ 子目录、4 个页面）
+  2. 后端 CORS：application.yml 新增 cors 配置节点；新增 WebMvcConfig.java 读取配置实现全局跨域
+  3. 前端脚手架：frontend/package.json / vite.config.js / index.html / main.js / App.vue / router / assets/.gitignore
+  4. 请求层：utils/request.js（axios 拦截器统一解构 Result）、utils/sse.js（sse.js v2 named export）
+  5. API 模块：api/doc.js / api/chat.js / api/agent.js
+  6. 四个页面：DocManage.vue（上传+分片弹窗+本地历史 localStorage）、Chat.vue（普通+SSE 流式+引用片段面板+topK）、Agent.vue（预置问题+工具表）、SwaggerUI.vue（iframe 内嵌后端）
+坑点：
+  1. sse.js v2 是 named export（export { SSE }），不是 default；vite.config proxy 必须覆盖 /swagger-ui.html、/swagger-ui、/actuator 才能让 iframe 正常加载
+  2. Chat.vue 里的 markdown 渲染用简易正则（**bold**、换行→<br>），没引入 markdown-it，保持零额外依赖
+验证：
+  mvn compile 通过（WebMvcConfig.java 无错）
+  npm install 成功；npm run build 成功，dist/ 含 16 个产物文件
+  完整联调（pgvector + DASHSCOPE_API_KEY）需待环境就绪
+关联：prompts/task/11~18
